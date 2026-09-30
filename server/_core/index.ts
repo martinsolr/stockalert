@@ -7,19 +7,33 @@ import { publicPlatformScript } from "./publicConfig";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { sdk } from "./sdk";
+import { checkStockAndNotify, markScheduleIdentity } from "../inventory";
 
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+  app.get("/api/health", (_req, res) => res.json({ status: "ok", service: "stockalert" }));
   app.get("/api/platform/config.js", (_req, res) => {
     res.set("Cache-Control", "no-store").type("application/javascript").send(publicPlatformScript());
   });
+  app.post("/api/scheduled/stock-check", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user.isCron || !user.taskUid) {
+        return res.status(403).json({ ok: false, error: "Apenas tarefas agendadas podem chamar este endpoint." });
+      }
+      await markScheduleIdentity(user.taskUid);
+      const result = await checkStockAndNotify();
+      return res.json({ ok: true, ...result });
+    } catch (error) {
+      console.error("[Scheduled stock check] Failed", error);
+      return res.status(500).json({ ok: false, error: "Falha ao verificar os estoques." });
+    }
+  });
   registerOAuthRoutes(app);
-  // tRPC API
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -27,12 +41,8 @@ async function startServer() {
       createContext,
     })
   );
-  // development mode uses Vite, production mode uses static files
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+  if (process.env.NODE_ENV === "development") await setupVite(app, server);
+  else serveStatic(app);
 
   const port = Number(process.env.PORT || "3000");
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid PORT");
