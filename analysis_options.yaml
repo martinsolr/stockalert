@@ -1,0 +1,13 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - backend/**
+
+linter:
+  rules:
+    avoid_relative_lib_imports: false
+    curly_braces_in_flow_control_structures: false

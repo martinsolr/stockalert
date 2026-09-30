@@ -1,0 +1,6 @@
+include: package:lints/recommended.yaml
+
+linter:
+  rules:
+    avoid_relative_lib_imports: false
+    curly_braces_in_flow_control_structures: false

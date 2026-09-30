@@ -1,49 +1,64 @@
-# StockAlert — Monitor de Estoque
+# StockAlert Mobile
 
-Dashboard em português do Brasil para acompanhar produtos, níveis mínimos, movimentações e alertas automáticos via Telegram.
+App mobile em **Dart/Flutter** para monitorar estoque e enviar alertas pelo Telegram.
 
-## Stack
+## Estrutura
 
-- React + Vite + Tailwind
-- Express + tRPC
-- Drizzle ORM + MySQL gerenciado
-- Telegram Bot API server-side
-- Callback agendado `POST /api/scheduled/stock-check`
+- `lib/`: aplicativo Flutter para Android e iOS.
+- `lib/models/`: modelos de produtos, alertas e configurações.
+- `lib/services/api_service.dart`: cliente HTTP do backend.
+- `lib/screens/`: dashboard, catálogo, ajustes e configurações.
+- `lib/widgets/`: tema e componentes visuais reutilizáveis.
+- `backend/`: API Dart com persistência JSON, scheduler e Telegram Bot API.
 
-## Desenvolvimento
+## Executar o app Flutter
 
 ```bash
-pnpm dev
-pnpm check
-pnpm test
-pnpm build
+flutter pub get
+flutter analyze
+flutter test
+flutter run
 ```
 
-O servidor usa `PORT` (padrão `3000`) e responde em `/api/health`.
+Por padrão, o Android usa `http://10.0.2.2:8080/api` como API. Para apontar para um servidor publicado:
 
-## Configurar Telegram
+```bash
+flutter run --dart-define=API_BASE_URL=https://seu-dominio.com/api
+```
 
-1. No Telegram, abra `@BotFather`, use `/newbot` e copie o token.
-2. Abra uma conversa com o bot criado e envie `/start`.
-3. Descubra o `chat_id` usando `https://api.telegram.org/botSEU_TOKEN/getUpdates` ou um bot auxiliar.
-4. Abra **Configurações** no StockAlert, informe token e chat ID, habilite os alertas e clique em **Testar conexão**.
+Em um celular físico, use o IP local do computador, não `10.0.2.2`.
 
-O token não é retornado ao frontend e não fica em variáveis públicas. Para produção, proteja também o acesso ao painel com autenticação da sua hospedagem.
+## Executar o backend Dart
 
-## Verificação automática
+```bash
+cd backend
+dart pub get
+dart run bin/server.dart
+```
 
-Depois de publicar a aplicação, crie uma tarefa agendada na hospedagem apontando para:
+Variáveis opcionais:
 
-- Método: `POST`
-- URL: `https://SEU-DOMINIO/api/scheduled/stock-check`
-- Cron UTC: `0 */5 * * * *`
+```bash
+PORT=8080 DATA_FILE=data/inventory.json SCHEDULE_MINUTES=5 dart run bin/server.dart
+```
 
-O endpoint usa a sessão de tarefa do ambiente e é idempotente: o mesmo produto não recebe alertas duplicados enquanto não voltar acima do estoque mínimo.
+Endpoints principais:
 
-## Publicar no Marvel App
+- `GET /api/health`
+- `GET /api/dashboard`
+- `GET|POST /api/products`
+- `PATCH|DELETE /api/products/:id`
+- `POST /api/products/:id/adjust`
+- `GET|PUT /api/settings`
+- `POST /api/settings/test`
+- `POST /api/alerts/check`
 
-O Marvel App normalmente é usado para prototipar telas e não substitui um backend persistente. Use o código da pasta `client/` como base visual se o Marvel aceitar React/HTML, mas publique o projeto completo (frontend + backend) em uma hospedagem Node que ofereça banco e tarefas agendadas. Não cole tokens do Telegram no JavaScript do navegador.
+O token do Telegram fica apenas no arquivo de dados do backend e nunca é enviado de volta ao app. O scheduler verifica os limites, evita alertas duplicados enquanto o produto continua crítico e marca o alerta como resolvido quando o estoque é reposto.
 
-## Evolução para WhatsApp
+## Marvel App
 
-O MVP atende o requisito de alertas via Telegram. Para WhatsApp, acrescente a WhatsApp Business Cloud API da Meta ou um provedor oficial, com número empresarial e templates aprovados. A lógica de alerta já está isolada em `server/telegram.ts` para permitir um segundo adaptador.
+O Marvel App pode ser usado para prototipar as telas. O produto funcional é este projeto Flutter mobile, que deve ser aberto no Android Studio/Xcode, executado em um dispositivo ou distribuído como APK/IPA.
+
+## GitHub
+
+Repositório privado: https://github.com/martinsolr/stockalert
